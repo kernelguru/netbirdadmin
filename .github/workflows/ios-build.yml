@@ -1,0 +1,33 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [ main, "claude/**" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode wählen (neueste)
+        run: |
+          XC=$(ls -d /Applications/Xcode*.app | sort -V | tail -n1)
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+      - name: XcodeGen installieren
+        run: brew install xcodegen
+      - name: Projekt erzeugen
+        run: xcodegen generate
+      - name: Build (Simulator, ohne Signierung)
+        run: |
+          set -o pipefail
+          xcodebuild -project NetBirdAdmin.xcodeproj -scheme NetBirdAdmin \
+            -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO build | tee build.log | grep -E "error:|warning: .*NetBirdAdmin|BUILD" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: Fehler anzeigen
+        if: failure()
+        run: grep -E "error:" -A3 build.log | head -200 || true
