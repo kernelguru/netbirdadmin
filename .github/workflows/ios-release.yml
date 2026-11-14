@@ -1,0 +1,70 @@
+name: iOS Release (IPA)
+
+on:
+  push:
+    tags: [ "v*" ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release-Tag (z. B. v0.10)"
+        required: true
+        default: "v0.10"
+
+permissions:
+  contents: write
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Xcode wählen (neueste)
+        run: |
+          XC=$(ls -d /Applications/Xcode*.app | sort -V | tail -n1)
+          sudo xcode-select -s "$XC"
+          xcodebuild -version
+      - name: Projekt erzeugen
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Release-Build für Geräte (unsigniert)
+        run: |
+          set -o pipefail
+          xcodebuild -project NetBirdAdmin.xcodeproj -scheme NetBirdAdmin \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build -skipPackagePluginValidation -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tee build.log | grep -E "error:|BUILD" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: IPA packen
+        run: |
+          APP=build/Build/Products/Release-iphoneos/NetBirdAdmin.app
+          test -d "$APP"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist"
+          mkdir -p dist/Payload
+          cp -R "$APP" dist/Payload/
+          (cd dist && zip -qry "NetBirdAdmin-${TAG}.ipa" Payload)
+          shasum -a 256 "dist/NetBirdAdmin-${TAG}.ipa" | tee "dist/NetBirdAdmin-${TAG}.ipa.sha256"
+      - name: GitHub-Release erstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<NOTES
+          ## NetBird Admin ${TAG}
+
+          Erste Vorabversion der iOS-App zur NetBird-Administration.
+
+          - Clients: Status, IPv4/IPv6, Details, bearbeiten, entfernen
+          - Neue Clients per Setup-Key inkl. QR-Code und Installationsbefehlen
+          - Reverse Proxy: Services, Cluster, Domains
+          - Exit-Nodes (0.0.0.0/0 + ::/0) und IPv6-Overlay
+          - Server-Update: GitHub-Release vs. lokale Version, Update per SSH-Zertifikat als root
+
+          **Hinweis:** Die IPA ist **unsigniert**. Installation per AltStore, SideStore, Sideloadly
+          oder nach Re-Signierung mit eigenem Apple-Developer-Zertifikat.
+          NOTES
+          gh release create "$TAG" dist/NetBirdAdmin-${TAG}.ipa dist/NetBirdAdmin-${TAG}.ipa.sha256 \
+            --title "NetBird Admin ${TAG}" --notes-file notes.md --prerelease --target "$GITHUB_SHA" \
+          || gh release upload "$TAG" dist/NetBirdAdmin-${TAG}.ipa dist/NetBirdAdmin-${TAG}.ipa.sha256 --clobber
