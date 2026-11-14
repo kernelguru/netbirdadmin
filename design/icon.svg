@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#232846"/>
+      <stop offset="1" stop-color="#070912"/>
+    </linearGradient>
+    <radialGradient id="glowO" cx="0.30" cy="0.25" r="0.65">
+      <stop offset="0" stop-color="#F68330" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#F68330" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="0.85" cy="0.90" r="0.6">
+      <stop offset="0" stop-color="#3468F2" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#3468F2" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.04"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.75"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.35"/>
+    </linearGradient>
+    <linearGradient id="o1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFC27A"/><stop offset="1" stop-color="#F68330"/></linearGradient>
+    <linearGradient id="o2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF9F4A"/><stop offset="1" stop-color="#E9661C"/></linearGradient>
+    <linearGradient id="o3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E86A1F"/><stop offset="1" stop-color="#B9440E"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+    <filter id="dotglow"><feGaussianBlur stdDeviation="6"/></filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glowO)"/>
+  <rect width="1024" height="1024" fill="url(#glowB)"/>
+
+  <!-- Glas-Scheibe -->
+  <rect x="132" y="132" width="760" height="760" rx="190" fill="url(#glass)" stroke="url(#rim)" stroke-width="5"/>
+  <path d="M190 330 Q 200 190 330 175 L 700 175" fill="none" stroke="#fff" stroke-opacity="0.25" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- Low-Poly-Vogel aus Netzwerk-Knoten -->
+  <g filter="url(#shadow)" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="3" stroke-linejoin="round">
+    <polygon points="392,262 548,490 470,520" fill="url(#o3)"/>          <!-- hinterer Flügel -->
+    <polygon points="300,330 470,520 392,262" fill="url(#o3)" opacity="0.85"/>
+    <polygon points="540,240 640,500 548,490" fill="url(#o2)"/>          <!-- vorderer Flügel -->
+    <polygon points="392,262 540,240 548,490" fill="url(#o1)"/>
+    <polygon points="548,490 640,500 712,430 " fill="url(#o2)"/>          <!-- Rücken -->
+    <polygon points="640,500 712,430 742,470" fill="url(#o1)"/>          <!-- Hals -->
+    <polygon points="712,430 770,382 742,470" fill="url(#o1)"/>          <!-- Kopf -->
+    <polygon points="770,382 838,412 742,470" fill="url(#o2)"/>          <!-- Schnabel -->
+    <polygon points="470,520 548,490 640,500 600,640" fill="url(#o2)"/>  <!-- Körper -->
+    <polygon points="640,500 742,470 600,640" fill="url(#o1)"/>          <!-- Brust -->
+    <polygon points="470,520 600,640 330,700" fill="url(#o3)"/>          <!-- Schwanz -->
+    <polygon points="330,700 600,640 420,760" fill="url(#o2)" opacity="0.9"/>
+  </g>
+
+  <!-- Mesh-Linien zu entfernten Peers -->
+  <g stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="4" stroke-dasharray="2 14" stroke-linecap="round">
+    <line x1="600" y1="640" x2="760" y2="760"/>
+    <line x1="330" y1="700" x2="250" y2="600"/>
+    <line x1="742" y1="470" x2="800" y2="600"/>
+  </g>
+
+  <!-- Knoten -->
+  <g fill="#FFFFFF">
+    <g filter="url(#dotglow)" opacity="0.8">
+      <circle cx="540" cy="240" r="16"/><circle cx="392" cy="262" r="16"/><circle cx="770" cy="382" r="14"/>
+      <circle cx="600" cy="640" r="16"/><circle cx="760" cy="760" r="18" fill="#7FA3FF"/>
+    </g>
+    <circle cx="540" cy="240" r="11"/><circle cx="392" cy="262" r="11"/><circle cx="300" cy="330" r="8"/>
+    <circle cx="548" cy="490" r="9"/><circle cx="640" cy="500" r="9"/><circle cx="712" cy="430" r="8"/>
+    <circle cx="770" cy="382" r="10"/><circle cx="838" cy="412" r="7"/><circle cx="742" cy="470" r="8"/>
+    <circle cx="600" cy="640" r="11"/><circle cx="470" cy="520" r="8"/><circle cx="330" cy="700" r="10"/><circle cx="420" cy="760" r="8"/>
+    <circle cx="760" cy="760" r="13" fill="#9DB8FF"/><circle cx="250" cy="600" r="10" fill="#9DB8FF"/><circle cx="800" cy="600" r="9" fill="#9DB8FF"/>
+  </g>
+</svg>

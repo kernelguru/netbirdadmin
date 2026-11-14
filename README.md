@@ -92,6 +92,7 @@ NetBirdAdmin/
   Services/                  NetBird-API, GitHub-Releases, SSH (Citadel), Updater, Keychain
   UI/Glass.swift             Liquid-Glass-Komponenten
   Views/                     Übersicht, Clients, Setup-Keys, Reverse Proxy, Netzwerk/Exit-Nodes/IPv6, Server/Update/SSH
+design/icon.svg            Quelle des App-Icons (SVG, 1024×1024)
 server/
   setup-ssh-ca.sh            sshd für Zertifikats-Login (Principals → root) einrichten
   sign-ios-key.sh            Public Key der App signieren
