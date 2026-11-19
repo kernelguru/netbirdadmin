@@ -1,8 +1,10 @@
 import SwiftUI
+import BackgroundTasks
 
 @main
 struct NetBirdAdminApp: App {
     @State private var store = AppStore()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -10,6 +12,30 @@ struct NetBirdAdminApp: App {
                 .environment(store)
                 .tint(.nbOrange)
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { BackgroundRefresh.schedule() }
+        }
+        .backgroundTask(.appRefresh(BackgroundRefresh.identifier)) {
+            await BackgroundRefresh.run()
+        }
+    }
+}
+
+/// Aktualisiert im Hintergrund die Daten für das Widget.
+enum BackgroundRefresh {
+    static let identifier = "de.kernelguru.netbirdadmin.refresh"
+
+    static func schedule() {
+        let req = BGAppRefreshTaskRequest(identifier: identifier)
+        req.earliestBeginDate = Date(timeIntervalSinceNow: 20 * 60)
+        try? BGTaskScheduler.shared.submit(req)
+    }
+
+    @MainActor
+    static func run() async {
+        schedule()
+        let store = AppStore()
+        await store.refreshAll()
     }
 }
 

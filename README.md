@@ -17,6 +17,7 @@ Native SwiftUI-App zur Administration eines (selbst gehosteten) **NetBird**-Serv
 | **IPv6** | IPv6-Overlay aktivieren/deaktivieren (`ipv6_enabled_groups`), eigener ULA-Bereich (`network_range_v6`) |
 | **Server-Update** | Vergleicht das **offizielle GitHub-Release** (`netbirdio/netbird`) mit der lokalen Version (per SSH bzw. `/api/instance/version`) und aktualisiert per **SSH mit Zertifikat als root** – Live-Log |
 | **SSH-Konsole** | Schnellbefehle (Container, Logs, Neustart, IPv6-Check) und freie Befehle |
+| **Widget** | Home- und Sperrbildschirm (klein/mittel/groß, rund, rechteckig, Textzeile): Clients online, Exit-Nodes, Proxy-Services, Server-Update, veraltete Clients, Peer-Liste – Glas-Optik, Aktualisierung per Hintergrund-Refresh |
 | **Mehrere Server** | beliebig viele Profile, Secrets in der Keychain |
 
 ## Build
@@ -100,6 +101,8 @@ NetBirdAdmin/
   UI/Glass.swift             Liquid-Glass-Komponenten
   Views/                     Übersicht, Clients, Setup-Keys, Reverse Proxy, Netzwerk/Exit-Nodes/IPv6, Server/Update/SSH
 design/icon.svg            Quelle des App-Icons (SVG, 1024×1024)
+NetBirdWidget/               WidgetKit-Erweiterung
+Shared/                      gemeinsamer Code App ↔ Widget (Snapshot über App Group)
 server/
   setup-ssh-ca.sh            sshd für Zertifikats-Login (Principals → root) einrichten
   sign-ios-key.sh            Public Key der App signieren

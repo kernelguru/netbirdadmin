@@ -6,3 +6,5 @@ DerivedData/
 *.xcworkspace/
 build/
 .DS_Store
+Config/*.plist
+Config/*.entitlements

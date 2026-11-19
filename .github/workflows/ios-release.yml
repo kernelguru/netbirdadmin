@@ -38,6 +38,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             build | tee build.log | grep -E "error:|BUILD" || true
           grep -q "BUILD SUCCEEDED" build.log
+      - name: Ad-hoc signieren (Entitlements für App Group / Widget)
+        run: |
+          APP=build/Build/Products/Release-iphoneos/NetBirdAdmin.app
+          for X in "$APP"/PlugIns/*.appex; do
+            [ -d "$X" ] && codesign -f -s - --entitlements Config/Widget.entitlements "$X"
+          done
+          codesign -f -s - --entitlements Config/App.entitlements "$APP"
+          codesign -d --entitlements - "$APP" || true
+          ls "$APP/PlugIns"
       - name: IPA packen
         run: |
           APP=build/Build/Products/Release-iphoneos/NetBirdAdmin.app
@@ -51,20 +60,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cat > notes.md <<NOTES
-          ## NetBird Admin ${TAG}
-
-          Erste Vorabversion der iOS-App zur NetBird-Administration.
-
-          - Clients: Status, IPv4/IPv6, Details, bearbeiten, entfernen
-          - Neue Clients per Setup-Key inkl. QR-Code und Installationsbefehlen
-          - Reverse Proxy: Services, Cluster, Domains
-          - Exit-Nodes (0.0.0.0/0 + ::/0) und IPv6-Overlay
-          - Server-Update: GitHub-Release vs. lokale Version, Update per SSH-Zertifikat als root
-
-          **Hinweis:** Die IPA ist **unsigniert**. Installation per AltStore, SideStore, Sideloadly
-          oder nach Re-Signierung mit eigenem Apple-Developer-Zertifikat.
-          NOTES
+          if [ -f "release-notes/${TAG}.md" ]; then cp "release-notes/${TAG}.md" notes.md
+          else echo "NetBird Admin ${TAG}" > notes.md; fi
+          printf '\n\n**Hinweis:** Die IPA ist ad-hoc signiert. Installation per AltStore, SideStore, Sideloadly oder nach Re-Signierung mit eigenem Apple-Developer-Zertifikat.\n' >> notes.md
           gh release create "$TAG" dist/NetBirdAdmin-${TAG}.ipa dist/NetBirdAdmin-${TAG}.ipa.sha256 \
             --title "NetBird Admin ${TAG}" --notes-file notes.md --prerelease --target "$GITHUB_SHA" \
           || gh release upload "$TAG" dist/NetBirdAdmin-${TAG}.ipa dist/NetBirdAdmin-${TAG}.ipa.sha256 --clobber

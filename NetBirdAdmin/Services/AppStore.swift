@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import WidgetKit
 
 /// Zentraler App-Zustand: Server-Profile + gecachte Daten des aktiven Servers.
 @MainActor
@@ -19,6 +20,7 @@ final class AppStore {
     var users: [NBUser] = []
     var resources: [NetworkResource] = []
     var latestRelease: GitHubRelease?
+    var versionInfo: InstanceVersionInfo?
 
     var isLoading = false
     var lastError: String?
@@ -111,18 +113,52 @@ final class AppStore {
             async let r = api.routes()
             async let a = try? api.accounts()
             async let rel = try? GitHubReleases.latest()
+            async let ver = try? api.versionInfo()
             peers = try await p.sorted { ($0.connected ? 0 : 1, $0.name.lowercased()) < ($1.connected ? 0 : 1, $1.name.lowercased()) }
             groups = try await g.sorted { $0.name.lowercased() < $1.name.lowercased() }
             setupKeys = try await k
             routes = try await r
             account = await a?.first
             if let release = await rel { latestRelease = release }
+            if let v = await ver { versionInfo = v }
             lastRefresh = Date()
         } catch {
             lastError = error.localizedDescription
         }
         await refreshProxy()
         await reloadUsers()
+        writeWidgetSnapshot()
+    }
+
+    /// Daten für das Home-/Sperrbildschirm-Widget ablegen.
+    func writeWidgetSnapshot() {
+        guard let current, !peers.isEmpty || lastError == nil else { return }
+        let installed = versionInfo?.managementCurrentVersion
+        let latest = latestRelease?.tagName ?? versionInfo?.managementAvailableVersion
+        var updateAvailable = versionInfo?.managementUpdateAvailable ?? false
+        if let i = SemVer(installed), let l = SemVer(latest) { updateAvailable = i < l }
+        let exitIDs = Set(exitNodes.map(\.networkId))
+        let exitEnabled = Set(exitNodes.filter(\.enabled).map(\.networkId))
+        let snap = WidgetSnapshot(
+            serverName: current.name,
+            updatedAt: Date(),
+            peersOnline: onlinePeers,
+            peersTotal: peers.count,
+            exitNodes: exitIDs.count,
+            exitNodesEnabled: exitEnabled.count,
+            servicesActive: services.filter(\.enabled).count,
+            servicesTotal: services.count,
+            servicesWithIssues: services.filter { $0.enabled && $0.meta.status != "active" }.count,
+            installedVersion: installed,
+            latestVersion: latest,
+            updateAvailable: updateAvailable,
+            outdatedClients: peers.filter { peerIsOutdated($0) }.count,
+            ipv6Enabled: ipv6Enabled,
+            peers: peers.prefix(12).map {
+                WidgetSnapshot.PeerItem(id: $0.id, name: $0.name, online: $0.connected, ip: $0.ip, outdated: peerIsOutdated($0))
+            })
+        snap.save()
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func reloadPeersAndGroups() async {
