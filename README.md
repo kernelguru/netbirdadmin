@@ -17,6 +17,11 @@ Native SwiftUI-App zur Administration eines (selbst gehosteten) **NetBird**-Serv
 | **IPv6** | IPv6-Overlay aktivieren/deaktivieren (`ipv6_enabled_groups`), eigener ULA-Bereich (`network_range_v6`) |
 | **Server-Update** | Vergleicht das **offizielle GitHub-Release** (`netbirdio/netbird`) mit der lokalen Version (per SSH bzw. `/api/instance/version`) und aktualisiert per **SSH mit Zertifikat als root** – Live-Log |
 | **SSH-Konsole** | Schnellbefehle (Container, Logs, Neustart, IPv6-Check) und freie Befehle |
+| **Zugriffsrichtlinien** | Quelle → Ziel (Gruppen oder Netzwerk-Ressource), Protokoll, Ports/Bereiche, erlauben/blockieren |
+| **Netzwerke** | Netzwerke mit Ressourcen (Host/Subnetz/Domain) und Routing-Peers |
+| **DNS** | Nameserver-Gruppen (Standard/Split-DNS), eigene Zonen mit A/AAAA/CNAME |
+| **Logs & Freigaben** | Audit-Log, Proxy-Zugriffslogs, Peer-/Benutzer-Freigaben, Debug-Paket eines Peers |
+| **Sicherheit & Hinweise** | App-Sperre per Face ID; Benachrichtigungen bei Peer offline/online und neuer NetBird-Version |
 | **Widget** | Home- und Sperrbildschirm (klein/mittel/groß, rund, rechteckig, Textzeile): Clients online, Exit-Nodes, Proxy-Services, Server-Update, veraltete Clients, Peer-Liste – Glas-Optik, Aktualisierung per Hintergrund-Refresh |
 | **Mehrere Server** | beliebig viele Profile, Secrets in der Keychain |
 
