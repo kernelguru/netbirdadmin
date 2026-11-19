@@ -7,9 +7,12 @@ Native SwiftUI-App zur Administration eines (selbst gehosteten) **NetBird**-Serv
 | Bereich | Was geht |
 |---|---|
 | **Übersicht** | Clients online/gesamt, Exit-Nodes, Proxy-Services, gültige Setup-Keys, offizielles Release vs. veraltete Clients |
-| **Clients** | Status (online, zuletzt gesehen, IPv4 **und IPv6**, Version, OS, Standort), Filter/Suche, umbenennen, SSH-Server / Login-Ablauf schalten, entfernen |
+| **Clients** | Status (online, zuletzt gesehen, IPv4 **und IPv6**, Version, OS, Standort), Filter/Suche, umbenennen, SSH-Server / Login-Ablauf schalten, Gruppen zuweisen, entfernen |
+| **Client-Update** | NetBird-Client eines Peers **remote per SSH-Zertifikat** aktualisieren (apt/dnf/yum/Homebrew/Installationsskript), läuft losgelöst auf dem Peer, Ergebnis und Fehler werden angezeigt. Zusätzlich automatisches Client-Update für alle Peers (aus / neueste / feste Version) |
+| **Gruppen & Benutzer** | Gruppen anlegen, umbenennen, Peers zuweisen, löschen. Benutzer einladen bzw. Service-User anlegen, Rolle (Berechtigungen), Gruppen, sperren, löschen |
 | **Neue Clients** | Setup-Key anlegen (einmalig/wiederverwendbar, Gültigkeit, Limit, ephemer, Auto-Gruppen) → Key im Klartext, **QR-Code**, fertige `netbird up`- und Docker-Befehle. Keys widerrufen/löschen |
-| **Reverse Proxy** | NetBird-Reverse-Proxy-Services anzeigen (Status, Zertifikat, Ziele), **an/aus schalten**, anlegen (HTTP/TCP/UDP/TLS → Peer oder Host), löschen; Proxy-Cluster-Status; eigene Domains hinzufügen und validieren |
+| **Reverse Proxy** | Services anzeigen, an/aus schalten, **anlegen und vollständig bearbeiten**: mehrere Ziele (Peer, Netzwerk-Ressource, direkt), Pfade, Protokoll, Optionen, Backend-Header. **Authentifizierung**: SSO mit Gruppen, Passwort, PIN, Magic-Link, Header-Auth; **pro Ziel/Pfad**: Service-Auth, ohne Auth oder gesperrt. Private (NetBird-only) Services, IP-/Länder-Beschränkungen, CrowdSec. **Teilen**: Benutzer per Gruppe freigeben bzw. Zugriff entziehen. Cluster-Status, eigene Domains |
+| **Netzwerk-Routen** | Routen anlegen/bearbeiten/löschen: IPv4- oder IPv6-Netz bzw. Domains, Routing über Peer oder Peer-Gruppe (HA), Verteil-Gruppen, Zugriffskontroll-Gruppen, Metrik, Masquerade |
 | **Exit-Nodes** | Anlegen mit **IPv4 (0.0.0.0/0) + IPv6 (::/0)**, aktivieren/deaktivieren, Auto-Apply, IPv6 nachrüsten, löschen |
 | **IPv6** | IPv6-Overlay aktivieren/deaktivieren (`ipv6_enabled_groups`), eigener ULA-Bereich (`network_range_v6`) |
 | **Server-Update** | Vergleicht das **offizielle GitHub-Release** (`netbirdio/netbird`) mit der lokalen Version (per SSH bzw. `/api/instance/version`) und aktualisiert per **SSH mit Zertifikat als root** – Live-Log |
@@ -63,6 +66,10 @@ In der App: *Server → SSH-Zertifikat*
 3. Inhalt von `netbird-ios-cert.pub` in der App **importieren**. Die App zeigt Key-ID, Principals und Gültigkeit an und prüft, dass das Zertifikat zum Schlüssel passt.
 
 Beim ersten Verbinden wird der **Host-Key-Fingerprint** angezeigt (Trust on first use) – mit `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` vergleichen. Ändert er sich später, verweigert die App die Verbindung.
+
+### Remote-Update von Clients
+
+Für das Client-Update per SSH muss auf dem jeweiligen Peer ebenfalls `server/setup-ssh-ca.sh` laufen (gleiche CA, gleicher Principal). Die App verbindet sich standardmäßig über die NetBird-IP – das iPhone muss dazu im NetBird-Netz sein. Das Update läuft per `nohup` auf dem Peer (Neustart des Dienstes trennt den Tunnel), die App verbindet sich danach erneut und liest Exit-Code und Protokoll (`/var/log/netbird-admin-update.log`). Windows-Peers: automatisches Client-Update verwenden.
 
 ### 3. Update-Methoden
 
