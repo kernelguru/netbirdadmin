@@ -99,6 +99,8 @@ struct AppSettingsView: View {
     @State private var release = Notifier.releaseEnabled
     @State private var groups = Notifier.watchedGroups
     @State private var permissionDenied = false
+    @State private var widgetTargets: [String] = UserDefaults.standard.stringArray(forKey: "widget.lastWriteTargets") ?? []
+    @State private var diagnostics: [String] = SharedStore.diagnostics
 
     var body: some View {
         Form {
@@ -121,6 +123,28 @@ struct AppSettingsView: View {
             Section {
                 GroupPicker(selection: $groups, excludeAll: true, allowCreate: false)
             } header: { Text("Nur diese Gruppen überwachen") } footer: { Text("Leer = alle Peers (ephemere Peers werden ignoriert).") }
+
+            Section {
+                Button {
+                    store.writeWidgetSnapshot()
+                    widgetTargets = UserDefaults.standard.stringArray(forKey: "widget.lastWriteTargets") ?? []
+                    diagnostics = SharedStore.diagnostics
+                } label: { Label("Widget jetzt aktualisieren", systemImage: "arrow.clockwise") }
+                if widgetTargets.isEmpty {
+                    Label("Keine gemeinsame Ablage beschreibbar – das Widget kann keine Daten erhalten.", systemImage: "xmark.octagon")
+                        .font(.footnote).foregroundStyle(.red)
+                } else {
+                    ForEach(widgetTargets, id: \.self) { Label($0, systemImage: "checkmark.circle").font(.caption) }
+                }
+                DisclosureGroup("Diagnose") {
+                    ForEach(diagnostics, id: \.self) { Text($0).font(.caption2.monospaced()).textSelection(.enabled) }
+                    Button { UIPasteboard.general.string = (diagnostics + widgetTargets).joined(separator: "\n") } label: {
+                        Label("Diagnose kopieren", systemImage: "doc.on.doc")
+                    }
+                }
+            } header: { Text("Widget") } footer: {
+                Text("Das Widget braucht eine App Group oder eine gemeinsame Keychain-Gruppe im Signier-Profil. Wird beides vom Signier-Dienst entfernt, kann iOS keine Daten an das Widget übergeben.")
+            }
         }
         .glassScreen()
         .navigationTitle("App-Einstellungen")

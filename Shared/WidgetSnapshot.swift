@@ -28,22 +28,25 @@ struct WidgetSnapshot: Codable {
     var ipv6Enabled: Bool
     var peers: [PeerItem]
 
-    static let appGroup = "group.de.kernelguru.netbirdadmin"
-    private static let key = "widgetSnapshot"
-
-    static var defaults: UserDefaults? { UserDefaults(suiteName: appGroup) }
+    private static let fileName = "widget-snapshot.json"
 
     static func load() -> WidgetSnapshot? {
-        guard let d = defaults?.data(forKey: key) else { return nil }
+        guard let d = SharedStore.read(name: fileName) else { return nil }
         let dec = JSONDecoder()
         dec.dateDecodingStrategy = .iso8601
         return try? dec.decode(WidgetSnapshot.self, from: d)
     }
 
-    func save() {
+    /// Speichert und liefert die Ablagen, in die erfolgreich geschrieben wurde.
+    @discardableResult
+    func save() -> [String] {
         let enc = JSONEncoder()
         enc.dateEncodingStrategy = .iso8601
-        if let d = try? enc.encode(self) { Self.defaults?.set(d, forKey: Self.key) }
+        guard let d = try? enc.encode(self) else { return [] }
+        let targets = SharedStore.write(d, name: Self.fileName)
+        UserDefaults.standard.set(targets, forKey: "widget.lastWriteTargets")
+        UserDefaults.standard.set(Date(), forKey: "widget.lastWrite")
+        return targets
     }
 
     static let placeholder = WidgetSnapshot(

@@ -76,6 +76,12 @@ struct StatusWidgetView: View {
             VStack(spacing: 6) {
                 Image(systemName: "bird.fill").font(.title2).foregroundStyle(WidgetColors.orange)
                 Text("App öffnen, um Daten zu laden").font(.caption2).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                if family != .systemSmall && family != .accessoryCircular && family != .accessoryInline {
+                    Text(SharedStore.accessibleGroups.isEmpty && SharedStore.keychainGroups.isEmpty
+                         ? "Kein gemeinsamer Speicher – Diagnose in der App unter Server → Face ID & Benachrichtigungen"
+                         : "Noch keine Daten von der App")
+                        .font(.system(size: 9)).multilineTextAlignment(.center).foregroundStyle(.tertiary)
+                }
             }
         }
     }
