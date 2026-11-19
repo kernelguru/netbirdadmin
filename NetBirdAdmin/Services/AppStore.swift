@@ -18,6 +18,10 @@ final class AppStore {
     var domains: [ReverseProxyDomain] = []
     var account: NBAccount?
     var users: [NBUser] = []
+    var policies: [NBPolicy] = []
+    var networks: [NBNetwork] = []
+    var nameserverGroups: [NameserverGroup] = []
+    var dnsZones: [DNSZone] = []
     var resources: [NetworkResource] = []
     var latestRelease: GitHubRelease?
     var versionInfo: InstanceVersionInfo?
@@ -77,7 +81,7 @@ final class AppStore {
     func clear() {
         peers = []; groups = []; setupKeys = []; routes = []
         services = []; clusters = []; domains = []; account = nil
-        users = []; resources = []
+        users = []; resources = []; policies = []; networks = []; nameserverGroups = []; dnsZones = []
     }
 
     // MARK: Abgeleitete Werte
@@ -128,6 +132,7 @@ final class AppStore {
         await refreshProxy()
         await reloadUsers()
         writeWidgetSnapshot()
+        Notifier.evaluate(store: self)
     }
 
     /// Daten für das Home-/Sperrbildschirm-Widget ablegen.
@@ -181,6 +186,31 @@ final class AppStore {
             users = all.sorted { $0.displayName.lowercased() < $1.displayName.lowercased() }
         } catch { lastError = error.localizedDescription }
     }
+
+    func loadPolicies() async {
+        guard let api = try? api() else { return }
+        do { policies = try await api.policies().sorted { $0.name.lowercased() < $1.name.lowercased() } }
+        catch { lastError = error.localizedDescription }
+    }
+
+    func loadNetworks() async {
+        guard let api = try? api() else { return }
+        do { networks = try await api.networks().sorted { $0.name.lowercased() < $1.name.lowercased() } }
+        catch { lastError = error.localizedDescription }
+    }
+
+    func loadDNS() async {
+        guard let api = try? api() else { return }
+        do {
+            async let ns = api.nameserverGroups()
+            async let z = try? api.dnsZones()
+            nameserverGroups = try await ns
+            dnsZones = await z ?? []
+        } catch { lastError = error.localizedDescription }
+    }
+
+    var pendingPeers: [Peer] { peers.filter { $0.approvalRequired == true } }
+    var pendingUsers: [NBUser] { users.filter { $0.pendingApproval == true } }
 
     func loadResources() async {
         guard let api = try? api() else { return }

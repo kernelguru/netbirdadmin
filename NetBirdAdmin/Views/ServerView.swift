@@ -29,6 +29,25 @@ struct ServerView: View {
                 }
                 .listRowBackground(Rectangle().fill(.ultraThinMaterial))
 
+                Section("Protokolle & Freigaben") {
+                    NavigationLink { ApprovalsView() } label: {
+                        HStack {
+                            Label("Freigaben", systemImage: "person.badge.clock")
+                            Spacer()
+                            let n = store.pendingPeers.count + store.pendingUsers.count
+                            if n > 0 { Pill(text: "\(n)", color: .nbOrange) }
+                        }
+                    }
+                    NavigationLink { AuditLogView() } label: { Label("Audit-Log", systemImage: "list.bullet.rectangle") }
+                    NavigationLink { ProxyAccessLogView() } label: { Label("Proxy-Zugriffe", systemImage: "arrow.left.arrow.right.square") }
+                }
+                .listRowBackground(Rectangle().fill(.ultraThinMaterial))
+
+                Section("App") {
+                    NavigationLink { AppSettingsView() } label: { Label("Face ID & Benachrichtigungen", systemImage: "bell.badge") }
+                }
+                .listRowBackground(Rectangle().fill(.ultraThinMaterial))
+
                 Section("Server") {
                     ForEach(store.profiles) { p in
                         HStack {

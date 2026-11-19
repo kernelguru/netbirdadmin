@@ -82,6 +82,15 @@ struct ClientsView: View {
     }
 
     @ViewBuilder private var peersSection: some View {
+        if !store.pendingPeers.isEmpty || !store.pendingUsers.isEmpty {
+            Section {
+                NavigationLink { ApprovalsView() } label: {
+                    Label("\(store.pendingPeers.count + store.pendingUsers.count) warten auf Freigabe", systemImage: "person.badge.clock")
+                        .foregroundStyle(Color.nbOrange)
+                }
+            }
+            .listRowBackground(Rectangle().fill(.ultraThinMaterial))
+        }
         Section {
             if filteredPeers.isEmpty {
                 Text(store.peers.isEmpty ? "Keine Clients" : "Kein Treffer").foregroundStyle(.secondary)
@@ -199,7 +208,20 @@ struct PeerDetailView: View {
                             if store.peerIsOutdated(p) { Pill(text: "Update", color: .nbOrange) }
                         }
                     }
-                } footer: { Text("Per SSH-Zertifikat auf dem Peer (Linux/macOS).") }
+                    NavigationLink { DebugBundleView(peer: p) } label: {
+                        Label("Debug-Paket anfordern", systemImage: "ladybug")
+                    }
+                    if p.approvalRequired == true {
+                        Button {
+                            Task {
+                                _ = await store.perform { api in
+                                    let u = try await api.approvePeer(p)
+                                    if let i = store.peers.firstIndex(where: { $0.id == p.id }) { store.peers[i] = u }
+                                }
+                            }
+                        } label: { Label("Peer freigeben", systemImage: "checkmark.seal") }
+                    }
+                } footer: { Text("Update per SSH-Zertifikat auf dem Peer (Linux/macOS).") }
                 Section("Einstellungen") {
                     TextField("Name", text: $name)
                     Toggle("SSH-Server aktiviert", isOn: $ssh)

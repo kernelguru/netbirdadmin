@@ -57,6 +57,7 @@ struct RootView: View {
                 .tabItem { Label("Server", systemImage: "server.rack") }
         }
         .errorBanner(Binding(get: { store.lastError }, set: { store.lastError = $0 }))
+        .appLock()
         .task {
             if store.profiles.isEmpty { showOnboarding = true }
             else { await store.refreshAll() }

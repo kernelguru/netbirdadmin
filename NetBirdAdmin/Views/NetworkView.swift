@@ -70,6 +70,13 @@ struct NetworkView: View {
         NavigationStack {
             List {
                 Section {
+                    NavigationLink { PoliciesView() } label: { Label("Zugriffsrichtlinien", systemImage: "checkmark.shield") }
+                    NavigationLink { NetworksView() } label: { Label("Netzwerke & Ressourcen", systemImage: "network") }
+                    NavigationLink { DNSView() } label: { Label("DNS", systemImage: "globe") }
+                }
+                .listRowBackground(Rectangle().fill(.ultraThinMaterial))
+
+                Section {
                     if exitGroups.isEmpty {
                         Text("Keine Exit-Nodes konfiguriert").foregroundStyle(.secondary)
                     }

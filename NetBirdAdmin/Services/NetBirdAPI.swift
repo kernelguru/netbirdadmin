@@ -165,10 +165,80 @@ struct NetBirdAPI {
     func deleteUser(_ id: String) async throws { try await delete("/users/\(id)") }
     func resendInvite(_ id: String) async throws { _ = try await request("POST", "/users/\(id)/invite") }
 
+    func approveUser(_ id: String) async throws { _ = try await request("POST", "/users/\(id)/approve") }
+    func rejectUser(_ id: String) async throws { _ = try await request("DELETE", "/users/\(id)/reject") }
+
+    // MARK: Peer-Freigabe & Debug-Paket
+
+    /// Peer freigeben (approval_required = false). Übrige Felder bleiben unverändert.
+    func approvePeer(_ p: Peer) async throws -> Peer {
+        let body = PeerUpdateRequest(name: p.name, sshEnabled: p.sshEnabled, loginExpirationEnabled: p.loginExpirationEnabled,
+                                     inactivityExpirationEnabled: p.inactivityExpirationEnabled ?? false, approvalRequired: false)
+        return try await updatePeer(p.id, body)
+    }
+
+    func peerJobs(_ peerID: String) async throws -> [PeerJob] { try await get("/peers/\(peerID)/jobs") }
+    func peerJob(_ peerID: String, _ jobID: String) async throws -> PeerJob { try await get("/peers/\(peerID)/jobs/\(jobID)") }
+
+    func requestDebugBundle(_ peerID: String, minutes: Int, logFiles: Int, anonymize: Bool) async throws -> PeerJob {
+        var params: [String: JSONValue] = [
+            "bundle_for": .bool(minutes > 0),
+            "bundle_for_time": .int(max(1, min(5, minutes))),
+            "log_file_count": .int(logFiles),
+            "anonymize": .bool(anonymize),
+        ]
+        if anonymize { params["anonymize_level"] = .string("default") }
+        let body: JSONValue = .object(["workload": .object(["type": .string("bundle"), "parameters": .object(params)])])
+        return try Self.typed(try await rawSend("POST", "/peers/\(peerID)/jobs", body))
+    }
+
+    // MARK: Zugriffsrichtlinien
+
+    func policies() async throws -> [NBPolicy] { try await get("/policies") }
+    func rawPolicy(_ id: String) async throws -> JSONValue { try await rawGet("/policies/\(id)") }
+    func createPolicyRaw(_ body: JSONValue) async throws -> NBPolicy { try Self.typed(try await rawSend("POST", "/policies", body)) }
+    func updatePolicyRaw(_ id: String, _ body: JSONValue) async throws -> NBPolicy { try Self.typed(try await rawPut("/policies/\(id)", body)) }
+    func deletePolicy(_ id: String) async throws { try await delete("/policies/\(id)") }
+
+    // MARK: DNS
+
+    func nameserverGroups() async throws -> [NameserverGroup] { try await get("/dns/nameservers") }
+    func createNameserverGroup(_ b: NameserverGroupRequest) async throws -> NameserverGroup { try await send("POST", "/dns/nameservers", b) }
+    func updateNameserverGroup(_ id: String, _ b: NameserverGroupRequest) async throws -> NameserverGroup { try await send("PUT", "/dns/nameservers/\(id)", b) }
+    func deleteNameserverGroup(_ id: String) async throws { try await delete("/dns/nameservers/\(id)") }
+
+    func dnsZones() async throws -> [DNSZone] { try await get("/dns/zones") }
+    func createDNSZone(_ b: DNSZoneRequest) async throws -> DNSZone { try await send("POST", "/dns/zones", b) }
+    func updateDNSZone(_ id: String, _ b: DNSZoneRequest) async throws -> DNSZone { try await send("PUT", "/dns/zones/\(id)", b) }
+    func deleteDNSZone(_ id: String) async throws { try await delete("/dns/zones/\(id)") }
+    func createDNSRecord(_ zone: String, _ b: DNSRecordRequest) async throws -> DNSRecord { try await send("POST", "/dns/zones/\(zone)/records", b) }
+    func updateDNSRecord(_ zone: String, _ id: String, _ b: DNSRecordRequest) async throws -> DNSRecord { try await send("PUT", "/dns/zones/\(zone)/records/\(id)", b) }
+    func deleteDNSRecord(_ zone: String, _ id: String) async throws { try await delete("/dns/zones/\(zone)/records/\(id)") }
+
+    // MARK: Logs
+
+    func auditEvents() async throws -> [AuditEvent] { try await get("/events/audit") }
+    func proxyAccessLogs(page: Int = 1, pageSize: Int = 50, search: String? = nil) async throws -> ProxyAccessLogPage {
+        var q = "/events/proxy?page=\(page)&page_size=\(pageSize)&sort_by=timestamp&sort_order=desc"
+        if let search, !search.isEmpty, let e = search.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) { q += "&search=\(e)" }
+        return try await get(q)
+    }
+
     // MARK: Networks
 
     func networks() async throws -> [NBNetwork] { try await get("/networks") }
     func networkResources(_ networkID: String) async throws -> [NetworkResource] { try await get("/networks/\(networkID)/resources") }
+    func networkResourceDetails(_ networkID: String) async throws -> [NetworkResourceDetail] { try await get("/networks/\(networkID)/resources") }
+    func createNetwork(_ b: NetworkRequest) async throws -> NBNetwork { try await send("POST", "/networks", b) }
+    func updateNetwork(_ id: String, _ b: NetworkRequest) async throws -> NBNetwork { try await send("PUT", "/networks/\(id)", b) }
+    func deleteNetwork(_ id: String) async throws { try await delete("/networks/\(id)") }
+    func createNetworkResource(_ net: String, _ b: NetworkResourceRequest) async throws -> NetworkResourceDetail { try await send("POST", "/networks/\(net)/resources", b) }
+    func updateNetworkResource(_ net: String, _ id: String, _ b: NetworkResourceRequest) async throws -> NetworkResourceDetail { try await send("PUT", "/networks/\(net)/resources/\(id)", b) }
+    func deleteNetworkResource(_ net: String, _ id: String) async throws { try await delete("/networks/\(net)/resources/\(id)") }
+    func networkRouters(_ net: String) async throws -> [NetworkRouter] { try await get("/networks/\(net)/routers") }
+    func createNetworkRouter(_ net: String, _ b: NetworkRouterRequest) async throws -> NetworkRouter { try await send("POST", "/networks/\(net)/routers", b) }
+    func updateNetworkRouter(_ net: String, _ id: String, _ b: NetworkRouterRequest) async throws -> NetworkRouter { try await send("PUT", "/networks/\(net)/routers/\(id)", b) }
+    func deleteNetworkRouter(_ net: String, _ id: String) async throws { try await delete("/networks/\(net)/routers/\(id)") }
 
     // MARK: Setup Keys
 

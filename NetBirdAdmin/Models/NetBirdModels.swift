@@ -316,6 +316,7 @@ struct NBUser: Decodable, Hashable, Identifiable {
     var autoGroups: [String]
     var isServiceUser: Bool?
     var isBlocked: Bool
+    var pendingApproval: Bool?
     var isCurrent: Bool?
     var lastLogin: Date?
     var issued: String?
@@ -362,6 +363,9 @@ struct NBNetwork: Decodable, Hashable, Identifiable {
     var name: String
     var description: String?
     var resources: [String]?
+    var routers: [String]?
+    var routingPeersCount: Int?
+    var policies: [String]?
 }
 
 struct NetworkResource: Decodable, Hashable, Identifiable {
