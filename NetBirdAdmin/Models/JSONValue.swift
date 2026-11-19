@@ -46,8 +46,13 @@ enum JSONValue: Codable, Hashable {
 
     var stringValue: String? { if case .string(let s) = self { return s }; return nil }
     var boolValue: Bool? { if case .bool(let b) = self { return b }; return nil }
+    var intValue: Int? { if case .number(let n) = self { return Int(n) }; return nil }
+    var objectValue: [String: JSONValue]? { if case .object(let o) = self { return o }; return nil }
     var arrayValue: [JSONValue]? { if case .array(let a) = self { return a }; return nil }
     var stringArray: [String] { arrayValue?.compactMap(\.stringValue) ?? [] }
+
+    static func strings(_ xs: [String]) -> JSONValue { .array(xs.map { .string($0) }) }
+    static func int(_ i: Int) -> JSONValue { .number(Double(i)) }
 
     func removing(_ keys: [String]) -> JSONValue {
         guard case .object(var o) = self else { return self }

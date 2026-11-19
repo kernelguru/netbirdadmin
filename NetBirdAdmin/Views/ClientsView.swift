@@ -6,6 +6,8 @@ struct ClientsView: View {
     @State private var search = ""
     @State private var filter: PeerFilter = .all
     @State private var showCreateKey = false
+    @State private var showCreateGroup = false
+    @State private var showCreateUser = false
 
     enum PeerFilter: String, CaseIterable, Identifiable {
         case all = "Alle", online = "Online", offline = "Offline", outdated = "Veraltet"
@@ -33,14 +35,21 @@ struct ClientsView: View {
             List {
                 Section {
                     Picker("", selection: $segment) {
-                        Text("Clients (\(store.peers.count))").tag(0)
-                        Text("Setup-Keys (\(store.setupKeys.count))").tag(1)
+                        Text("Clients").tag(0)
+                        Text("Keys").tag(1)
+                        Text("Gruppen").tag(2)
+                        Text("Benutzer").tag(3)
                     }
                     .pickerStyle(.segmented)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                 }
-                if segment == 0 { peersSection } else { SetupKeysSection() }
+                switch segment {
+                case 0: peersSection
+                case 1: SetupKeysSection()
+                case 2: GroupsSection()
+                default: UsersSection()
+                }
             }
             .glassScreen()
             .navigationTitle("Clients")
@@ -48,7 +57,13 @@ struct ClientsView: View {
             .refreshable { await store.refreshAll() }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showCreateKey = true } label: { Label("Neuer Client", systemImage: "plus.circle.fill") }
+                    Button {
+                        switch segment {
+                        case 2: showCreateGroup = true
+                        case 3: showCreateUser = true
+                        default: showCreateKey = true
+                        }
+                    } label: { Label("Neu", systemImage: "plus.circle.fill") }
                 }
                 if segment == 0 {
                     ToolbarItem(placement: .topBarLeading) {
@@ -61,6 +76,8 @@ struct ClientsView: View {
                 }
             }
             .sheet(isPresented: $showCreateKey) { NavigationStack { CreateSetupKeyView() } }
+            .sheet(isPresented: $showCreateGroup) { NavigationStack { CreateGroupView() } }
+            .sheet(isPresented: $showCreateUser) { NavigationStack { CreateUserView() } }
         }
     }
 
@@ -170,7 +187,19 @@ struct PeerDetailView: View {
                 Section("Gruppen") {
                     if p.groups.isEmpty { Text("Keine").foregroundStyle(.secondary) }
                     ForEach(p.groups) { g in Text(g.name) }
+                    NavigationLink { PeerGroupsEditor(peerID: p.id) } label: {
+                        Label("Gruppen bearbeiten", systemImage: "person.3")
+                    }
                 }
+                Section {
+                    NavigationLink { PeerRemoteUpdateView(peer: p) } label: {
+                        HStack {
+                            Label("NetBird-Client aktualisieren", systemImage: "arrow.down.circle")
+                            Spacer()
+                            if store.peerIsOutdated(p) { Pill(text: "Update", color: .nbOrange) }
+                        }
+                    }
+                } footer: { Text("Per SSH-Zertifikat auf dem Peer (Linux/macOS).") }
                 Section("Einstellungen") {
                     TextField("Name", text: $name)
                     Toggle("SSH-Server aktiviert", isOn: $ssh)

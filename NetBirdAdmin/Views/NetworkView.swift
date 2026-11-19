@@ -4,12 +4,66 @@ import SwiftUI
 struct NetworkView: View {
     @Environment(AppStore.self) private var store
     @State private var showCreate = false
+    @State private var showCreateRoute = false
+
+    var autoUpdateLabel: String {
+        switch store.account?.settings["auto_update_version"]?.stringValue ?? "" {
+        case "", "disabled": return "aus"
+        case "latest": return "neueste"
+        case let v: return v
+        }
+    }
 
     /// Exit-Nodes nach network_id gruppiert (IPv4 + IPv6 gehören zusammen)
     var exitGroups: [(id: String, routes: [NBRoute])] {
         Dictionary(grouping: store.exitNodes, by: \.networkId)
             .map { (id: $0.key, routes: $0.value.sorted { !$0.isIPv6 && $1.isIPv6 }) }
             .sorted { $0.id < $1.id }
+    }
+
+    private var routesSection: some View {
+        Section {
+            let others = store.routes.filter { !$0.isExitNode }.sorted { $0.networkId < $1.networkId }
+            if others.isEmpty { Text("Keine").foregroundStyle(.secondary) }
+            ForEach(others) { r in
+                NavigationLink { RouteEditorView(routeID: r.id) } label: {
+                    HStack {
+                        Image(systemName: r.enabled ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(r.enabled ? Color.nbOnline : .secondary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(r.networkId).font(.subheadline.weight(.semibold))
+                            Text(r.network ?? r.domains?.joined(separator: ", ") ?? "")
+                                .font(.caption.monospaced()).foregroundStyle(.secondary).lineLimit(1)
+                            Text("via " + (r.peer.map { store.peerName($0) } ?? (r.peerGroups ?? []).map { store.groupName($0) }.joined(separator: ", ")))
+                                .font(.caption2).foregroundStyle(.tertiary)
+                        }
+                        Spacer()
+                        Pill(text: r.domains?.isEmpty == false ? "DNS" : (r.isIPv6 ? "IPv6" : "IPv4"),
+                             color: r.isIPv6 ? .nbTeal : .nbBlue)
+                    }
+                }
+                .swipeActions {
+                    Button(role: .destructive) {
+                        Task {
+                            if await store.perform({ try await $0.deleteRoute(r.id) }) { store.routes.removeAll { $0.id == r.id } }
+                        }
+                    } label: { Label("Löschen", systemImage: "trash") }
+                    Button {
+                        Task {
+                            var req = RouteRequest(from: r)
+                            req.enabled = !r.enabled
+                            _ = await store.perform { api in
+                                let u = try await api.updateRoute(r.id, req)
+                                if let i = store.routes.firstIndex(where: { $0.id == r.id }) { store.routes[i] = u }
+                            }
+                        }
+                    } label: { Label(r.enabled ? "Aus" : "An", systemImage: "power") }
+                    .tint(.orange)
+                }
+            }
+            Button { showCreateRoute = true } label: { Label("Route hinzufügen", systemImage: "plus") }
+        } header: { Text("Netzwerk-Routen") }
+        .listRowBackground(Rectangle().fill(.ultraThinMaterial))
     }
 
     var body: some View {
@@ -29,16 +83,14 @@ struct NetworkView: View {
 
                 IPv6Section()
 
-                Section("Weitere Routen") {
-                    let others = store.routes.filter { !$0.isExitNode }
-                    if others.isEmpty { Text("Keine").foregroundStyle(.secondary) }
-                    ForEach(others) { r in
+                routesSection
+
+                Section("Client-Updates") {
+                    NavigationLink { ClientAutoUpdateView() } label: {
                         HStack {
-                            Image(systemName: r.enabled ? "checkmark.circle.fill" : "circle").foregroundStyle(r.enabled ? Color.nbOnline : .secondary)
-                            VStack(alignment: .leading) {
-                                Text(r.networkId).font(.subheadline)
-                                Text(r.network ?? r.domains?.joined(separator: ", ") ?? "").font(.caption.monospaced()).foregroundStyle(.secondary)
-                            }
+                            Label("Automatische Updates", systemImage: "arrow.triangle.2.circlepath")
+                            Spacer()
+                            Text(autoUpdateLabel).foregroundStyle(.secondary).font(.callout)
                         }
                     }
                 }
@@ -49,10 +101,14 @@ struct NetworkView: View {
             .refreshable { await store.refreshAll() }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { showCreate = true } label: { Label("Exit-Node", systemImage: "plus.circle.fill") }
+                    Menu {
+                        Button { showCreateRoute = true } label: { Label("Netzwerk-Route", systemImage: "point.topleft.down.to.point.bottomright.curvepath") }
+                        Button { showCreate = true } label: { Label("Exit-Node", systemImage: "door.right.hand.open") }
+                    } label: { Image(systemName: "plus.circle.fill") }
                 }
             }
             .sheet(isPresented: $showCreate) { NavigationStack { CreateExitNodeView() } }
+            .sheet(isPresented: $showCreateRoute) { NavigationStack { RouteEditorView(routeID: nil) } }
         }
     }
 }

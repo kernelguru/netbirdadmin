@@ -94,6 +94,17 @@ struct NetBirdAPI {
         _ = try await request("DELETE", path)
     }
 
+    func rawSend(_ method: String, _ path: String, _ value: JSONValue) async throws -> JSONValue {
+        let data = try await request(method, path, body: try Self.rawEncoder.encode(value))
+        return (try? Self.rawDecoder.decode(JSONValue.self, from: data)) ?? .null
+    }
+
+    /// JSONValue (snake_case) in ein typisiertes Modell umwandeln.
+    static func typed<T: Decodable>(_ value: JSONValue) throws -> T {
+        do { return try decoder.decode(T.self, from: try rawEncoder.encode(value)) }
+        catch { throw APIError.decoding(String(describing: error)) }
+    }
+
     func rawGet(_ path: String) async throws -> JSONValue {
         try Self.rawDecoder.decode(JSONValue.self, from: try await request("GET", path))
     }
@@ -118,6 +129,46 @@ struct NetBirdAPI {
     // MARK: Groups
 
     func groups() async throws -> [NBGroup] { try await get("/groups") }
+    func createGroup(_ body: GroupCreateRequest) async throws -> NBGroup { try await send("POST", "/groups", body) }
+    func deleteGroup(_ id: String) async throws { try await delete("/groups/\(id)") }
+
+    /// Gruppe umbenennen / Mitglieder setzen. Ressourcen bleiben erhalten.
+    func updateGroup(_ id: String, name: String? = nil, peers: [String]) async throws -> NBGroup {
+        let raw = try await rawGet("/groups/\(id)")
+        let resources = raw["resources"] ?? .array([])
+        let body: JSONValue = .object([
+            "name": .string(name ?? raw["name"]?.stringValue ?? ""),
+            "peers": .array(peers.map { .string($0) }),
+            "resources": resources == .null ? .array([]) : resources,
+        ])
+        return try Self.typed(try await rawPut("/groups/\(id)", body))
+    }
+
+    func addPeer(_ peerID: String, toGroup groupID: String) async throws -> NBGroup {
+        let g: NBGroup = try await get("/groups/\(groupID)")
+        var ids = (g.peers ?? []).map(\.id)
+        if !ids.contains(peerID) { ids.append(peerID) }
+        return try await updateGroup(groupID, peers: ids)
+    }
+
+    func removePeer(_ peerID: String, fromGroup groupID: String) async throws -> NBGroup {
+        let g: NBGroup = try await get("/groups/\(groupID)")
+        return try await updateGroup(groupID, peers: (g.peers ?? []).map(\.id).filter { $0 != peerID })
+    }
+
+    // MARK: Users
+
+    func users() async throws -> [NBUser] { try await get("/users") }
+    func serviceUsers() async throws -> [NBUser] { try await get("/users?service_user=true") }
+    func createUser(_ body: UserCreateRequest) async throws -> NBUser { try await send("POST", "/users", body) }
+    func updateUser(_ id: String, _ body: UserUpdateRequest) async throws -> NBUser { try await send("PUT", "/users/\(id)", body) }
+    func deleteUser(_ id: String) async throws { try await delete("/users/\(id)") }
+    func resendInvite(_ id: String) async throws { _ = try await request("POST", "/users/\(id)/invite") }
+
+    // MARK: Networks
+
+    func networks() async throws -> [NBNetwork] { try await get("/networks") }
+    func networkResources(_ networkID: String) async throws -> [NetworkResource] { try await get("/networks/\(networkID)/resources") }
 
     // MARK: Setup Keys
 
@@ -167,6 +218,18 @@ struct NetBirdAPI {
         raw["enabled"] = .bool(enabled)
         let body = raw.removing(["id", "meta", "terminated", "port_auto_assigned", "proxy_cluster"])
         try await rawPut("/reverse-proxies/services/\(id)", body)
+    }
+
+    func rawProxyService(_ id: String) async throws -> JSONValue { try await rawGet("/reverse-proxies/services/\(id)") }
+
+    static let proxyReadOnlyKeys = ["id", "meta", "terminated", "port_auto_assigned", "proxy_cluster"]
+
+    func createProxyServiceRaw(_ body: JSONValue) async throws -> ProxyService {
+        try Self.typed(try await rawSend("POST", "/reverse-proxies/services", body.removing(Self.proxyReadOnlyKeys)))
+    }
+
+    func updateProxyServiceRaw(_ id: String, _ body: JSONValue) async throws -> ProxyService {
+        try Self.typed(try await rawPut("/reverse-proxies/services/\(id)", body.removing(Self.proxyReadOnlyKeys)))
     }
 
     func deleteProxyService(_ id: String) async throws { try await delete("/reverse-proxies/services/\(id)") }

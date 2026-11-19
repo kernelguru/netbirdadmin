@@ -131,7 +131,8 @@ struct RouteRequest: Encodable {
     var enabled: Bool
     var peer: String?
     var peerGroups: [String]?
-    var network: String
+    var network: String?
+    var domains: [String]?
     var metric: Int
     var masquerade: Bool
     var groups: [String]
@@ -146,7 +147,8 @@ struct RouteRequest: Encodable {
         peer = r.peer
         peerGroups = (r.peerGroups?.isEmpty ?? true) ? nil : r.peerGroups
         if peer != nil { peerGroups = nil }
-        network = r.network ?? "0.0.0.0/0"
+        network = (r.domains?.isEmpty ?? true) ? (r.network ?? "0.0.0.0/0") : nil
+        domains = (r.domains?.isEmpty ?? true) ? nil : r.domains
         metric = r.metric
         masquerade = r.masquerade
         groups = r.groups
@@ -205,6 +207,35 @@ struct ProxyService: Decodable, Hashable, Identifiable {
     var rewriteRedirects: Bool?
     var meta: ProxyServiceMeta
     var `private`: Bool?
+    var auth: ServiceAuthSummary?
+    var accessGroups: [String]?
+
+    var bearerGroups: [String] {
+        guard auth?.bearerAuth?.enabled == true else { return [] }
+        return auth?.bearerAuth?.distributionGroups ?? []
+    }
+
+    /// Kurzbeschreibung der aktiven Authentifizierungen
+    var authLabels: [String] {
+        var l: [String] = []
+        if auth?.bearerAuth?.enabled == true { l.append("SSO") }
+        if auth?.passwordAuth?.enabled == true { l.append("Passwort") }
+        if auth?.pinAuth?.enabled == true { l.append("PIN") }
+        if auth?.linkAuth?.enabled == true { l.append("Link") }
+        if (auth?.headerAuths ?? []).contains(where: { $0.enabled }) { l.append("Header") }
+        return l
+    }
+}
+
+struct ServiceAuthSummary: Decodable, Hashable {
+    struct Flag: Decodable, Hashable { var enabled: Bool }
+    struct Bearer: Decodable, Hashable { var enabled: Bool; var distributionGroups: [String]? }
+    struct Header: Decodable, Hashable { var enabled: Bool; var header: String }
+    var passwordAuth: Flag?
+    var pinAuth: Flag?
+    var bearerAuth: Bearer?
+    var linkAuth: Flag?
+    var headerAuths: [Header]?
 }
 
 struct ProxyServiceMeta: Codable, Hashable {
@@ -221,6 +252,7 @@ struct ProxyTarget: Codable, Hashable, Identifiable {
     var host: String?
     var port: Int
     var enabled: Bool
+    var accessAction: String?
     var id: String { targetId + (path ?? "") + "\(port)" }
 }
 
@@ -271,4 +303,78 @@ struct GitHubRelease: Decodable, Identifiable {
     let htmlUrl: URL?
     let publishedAt: Date?
     let prerelease: Bool
+}
+
+// MARK: - Users
+
+struct NBUser: Decodable, Hashable, Identifiable {
+    let id: String
+    var email: String?
+    var name: String
+    var role: String
+    var status: String?
+    var autoGroups: [String]
+    var isServiceUser: Bool?
+    var isBlocked: Bool
+    var isCurrent: Bool?
+    var lastLogin: Date?
+    var issued: String?
+    var password: String?
+
+    var displayName: String { name.isEmpty ? (email ?? id) : name }
+}
+
+struct UserCreateRequest: Encodable {
+    var email: String?
+    var name: String
+    var role: String
+    var autoGroups: [String]
+    var isServiceUser: Bool
+}
+
+struct UserUpdateRequest: Encodable {
+    var role: String
+    var autoGroups: [String]
+    var isBlocked: Bool
+}
+
+enum UserRole: String, CaseIterable, Identifiable {
+    case user, admin, auditor, networkAdmin = "network_admin", billingAdmin = "billing_admin", owner
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .user: return "Benutzer"
+        case .admin: return "Administrator"
+        case .auditor: return "Auditor (nur lesen)"
+        case .networkAdmin: return "Netzwerk-Admin"
+        case .billingAdmin: return "Billing-Admin"
+        case .owner: return "Eigentümer"
+        }
+    }
+    static var assignable: [UserRole] { [.user, .auditor, .networkAdmin, .admin, .billingAdmin] }
+    static func label(_ raw: String) -> String { UserRole(rawValue: raw)?.label ?? raw }
+}
+
+// MARK: - Networks
+
+struct NBNetwork: Decodable, Hashable, Identifiable {
+    let id: String
+    var name: String
+    var description: String?
+    var resources: [String]?
+}
+
+struct NetworkResource: Decodable, Hashable, Identifiable {
+    let id: String
+    var type: String          // host | subnet | domain
+    var name: String
+    var description: String?
+    var address: String
+    var enabled: Bool
+    var networkName: String?  // von der App gesetzt
+}
+
+struct GroupCreateRequest: Encodable {
+    var name: String
+    var peers: [String]
 }

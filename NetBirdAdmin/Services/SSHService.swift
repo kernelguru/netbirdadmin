@@ -86,17 +86,23 @@ final class SSHSession {
     }
 
     static func connect(profile: ServerProfile) async throws -> SSHSession {
+        try await connect(host: profile.effectiveSSHHost, port: profile.sshPort,
+                          user: profile.sshUser, expectedHostKey: profile.trustedHostKey)
+    }
+
+    static func connect(host: String, port: Int, user: String, expectedHostKey: String?,
+                        timeout: Int64 = 15) async throws -> SSHSession {
         guard let key = SSHKeyManager.privateKey else { throw SSHServiceError.noKey }
-        let auth = CertificateAuthDelegate(username: profile.sshUser, key: key, certificate: SSHKeyManager.certificate)
-        let hostDelegate = TOFUHostKeyDelegate(expected: profile.trustedHostKey)
+        let auth = CertificateAuthDelegate(username: user, key: key, certificate: SSHKeyManager.certificate)
+        let hostDelegate = TOFUHostKeyDelegate(expected: expectedHostKey)
         do {
             let client = try await SSHClient.connect(
-                host: profile.effectiveSSHHost,
-                port: profile.sshPort,
+                host: host,
+                port: port,
                 authenticationMethod: .custom(auth),
                 hostKeyValidator: .custom(hostDelegate),
                 reconnect: .never,
-                connectTimeout: .seconds(15)
+                connectTimeout: .seconds(timeout)
             )
             return SSHSession(client: client, fingerprint: hostDelegate.seen)
         } catch let e as SSHServiceError {

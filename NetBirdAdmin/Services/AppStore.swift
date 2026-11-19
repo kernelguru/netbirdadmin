@@ -16,6 +16,8 @@ final class AppStore {
     var clusters: [ProxyCluster] = []
     var domains: [ReverseProxyDomain] = []
     var account: NBAccount?
+    var users: [NBUser] = []
+    var resources: [NetworkResource] = []
     var latestRelease: GitHubRelease?
 
     var isLoading = false
@@ -73,6 +75,7 @@ final class AppStore {
     func clear() {
         peers = []; groups = []; setupKeys = []; routes = []
         services = []; clusters = []; domains = []; account = nil
+        users = []; resources = []
     }
 
     // MARK: Abgeleitete Werte
@@ -86,6 +89,7 @@ final class AppStore {
 
     func groupName(_ id: String) -> String { groups.first { $0.id == id }?.name ?? id }
     func peerName(_ id: String) -> String { peers.first { $0.id == id }?.name ?? id }
+    func userName(_ id: String) -> String { users.first { $0.id == id }?.displayName ?? id }
 
     func peerIsOutdated(_ p: Peer) -> Bool {
         guard let l = SemVer(latestRelease?.tagName), let v = SemVer(p.version) else { return false }
@@ -118,6 +122,41 @@ final class AppStore {
             lastError = error.localizedDescription
         }
         await refreshProxy()
+        await reloadUsers()
+    }
+
+    func reloadPeersAndGroups() async {
+        guard let api = try? api() else { return }
+        do {
+            async let p = api.peers()
+            async let g = api.groups()
+            peers = try await p.sorted { ($0.connected ? 0 : 1, $0.name.lowercased()) < ($1.connected ? 0 : 1, $1.name.lowercased()) }
+            groups = try await g.sorted { $0.name.lowercased() < $1.name.lowercased() }
+        } catch { lastError = error.localizedDescription }
+    }
+
+    func reloadUsers() async {
+        guard let api = try? api() else { return }
+        do {
+            async let u = api.users()
+            async let su = try? api.serviceUsers()
+            var all = try await u
+            for s in await su ?? [] where !all.contains(where: { $0.id == s.id }) { all.append(s) }
+            users = all.sorted { $0.displayName.lowercased() < $1.displayName.lowercased() }
+        } catch { lastError = error.localizedDescription }
+    }
+
+    func loadResources() async {
+        guard let api = try? api() else { return }
+        guard let nets = try? await api.networks() else { return }
+        var all: [NetworkResource] = []
+        for n in nets {
+            if var rs = try? await api.networkResources(n.id) {
+                for i in rs.indices { rs[i].networkName = n.name }
+                all += rs
+            }
+        }
+        resources = all
     }
 
     func refreshProxy() async {
