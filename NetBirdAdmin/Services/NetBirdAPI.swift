@@ -338,3 +338,16 @@ enum DateParsing {
         return nil
     }
 }
+
+/// Tolerantes Dekodieren optionaler Datumsfelder: NetBird (Go) liefert für
+/// „nie“ den Nullwert `0001-01-01T00:00:00Z`, teils auch leere Strings.
+/// Solche und unlesbare Werte werden zu `nil` statt die ganze Antwort scheitern zu lassen.
+extension KeyedDecodingContainer {
+    func decodeIfPresent(_ type: Date.Type, forKey key: Key) throws -> Date? {
+        guard contains(key), try !decodeNil(forKey: key) else { return nil }
+        if let s = try? decode(String.self, forKey: key) {
+            return DateParsing.parse(s)
+        }
+        return try? decode(Date.self, forKey: key)
+    }
+}
