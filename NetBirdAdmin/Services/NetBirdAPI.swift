@@ -351,3 +351,12 @@ extension KeyedDecodingContainer {
         return try? decode(Date.self, forKey: key)
     }
 }
+
+/// Go serialisiert leere Slices teils als `null`. Pflicht-Listen werden deshalb
+/// bei `null` oder fehlendem Schlüssel als leere Liste gelesen.
+extension KeyedDecodingContainer {
+    func decode<E: Decodable>(_ type: [E].Type, forKey key: Key) throws -> [E] {
+        guard contains(key), try !decodeNil(forKey: key) else { return [] }
+        return try decodeIfPresent([E].self, forKey: key) ?? []
+    }
+}
